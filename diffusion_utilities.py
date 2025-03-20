@@ -139,6 +139,42 @@ class EmbedFC(nn.Module):
         # 执行嵌入变换（示例: 输入[B,1] → 输出[B,emb_dim]）
         return self.model(x)
     
+
+class CustomDataset(Dataset):
+    def __init__(self, sfilename, lfilename, transform, null_context=False):
+        self.sprites = np.load(sfilename)
+        self.slabels = np.load(lfilename)
+        print(f"sprite shape: {self.sprites.shape}")
+        print(f"labels shape: {self.slabels.shape}")
+        self.transform = transform
+        self.null_context = null_context
+        self.sprites_shape = self.sprites.shape
+        self.slabel_shape = self.slabels.shape
+                
+    # Return the number of images in the dataset
+    def __len__(self):
+        return len(self.sprites)
+    
+    # Get the image and label at a given index
+    def __getitem__(self, idx):
+        # Return the image and label as a tuple
+        if self.transform:
+            image = self.transform(self.sprites[idx])
+            if self.null_context:
+                label = torch.tensor(0).to(torch.int64)
+            else:
+                label = torch.tensor(self.slabels[idx]).to(torch.int64)
+        return (image, label)
+
+    def getshapes(self):
+        # return shapes of data and labels
+        return self.sprites_shape, self.slabel_shape
+
+transform = transforms.Compose([
+    transforms.ToTensor(),                # from [0,255] to range [0.0,1.0]
+    transforms.Normalize((0.5,), (0.5,))  # range [-1,1]
+])
+
 def unorm(x):
     """
     对单张图像进行逐通道归一化，将每个通道的像素值缩放到 [0, 1] 范围。
@@ -230,39 +266,3 @@ def plot_sample(x_gen_store,n_sample,nrows,save_dir, fn,  w, save=False):
         ani.save(save_dir + f"{fn}_w{w}.gif", dpi=100, writer=PillowWriter(fps=5))
         print('saved gif at ' + save_dir + f"{fn}_w{w}.gif")
     return ani
-
-
-class CustomDataset(Dataset):
-    def __init__(self, sfilename, lfilename, transform, null_context=False):
-        self.sprites = np.load(sfilename)
-        self.slabels = np.load(lfilename)
-        print(f"sprite shape: {self.sprites.shape}")
-        print(f"labels shape: {self.slabels.shape}")
-        self.transform = transform
-        self.null_context = null_context
-        self.sprites_shape = self.sprites.shape
-        self.slabel_shape = self.slabels.shape
-                
-    # Return the number of images in the dataset
-    def __len__(self):
-        return len(self.sprites)
-    
-    # Get the image and label at a given index
-    def __getitem__(self, idx):
-        # Return the image and label as a tuple
-        if self.transform:
-            image = self.transform(self.sprites[idx])
-            if self.null_context:
-                label = torch.tensor(0).to(torch.int64)
-            else:
-                label = torch.tensor(self.slabels[idx]).to(torch.int64)
-        return (image, label)
-
-    def getshapes(self):
-        # return shapes of data and labels
-        return self.sprites_shape, self.slabel_shape
-
-transform = transforms.Compose([
-    transforms.ToTensor(),                # from [0,255] to range [0.0,1.0]
-    transforms.Normalize((0.5,), (0.5,))  # range [-1,1]
-])
